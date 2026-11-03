@@ -3,6 +3,7 @@
 ## Notes: A destroy list for enchanters - every disenchantable item in your bags, one click (or one keybind) per item. /pd
 ## Author: Jake (Pint's Add-ons, built with Claude)
 ## Version: 1.2
+## X-Curse-Project-ID: 1781050
 ## X-License: GPL-3.0
 ## SavedVariables: PintsDisenchantDB
 ## OptionalDeps: Auctionator, LibDBIcon-1.0
