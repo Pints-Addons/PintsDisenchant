@@ -1,0 +1,10 @@
+Pint's Disenchant - Changelog
+
+v1.2
+- First public release.
+- A list of every item in your bags you can disenchant, with one "Disenchant next" button and a keybind.
+- Choose which qualities to include (Uncommon, Rare, Epic) and whether Bind on Equip items are included.
+- Items your Enchanting skill can't handle yet are marked with the skill they need.
+- Right-click an item to ignore it; items the game refuses twice are ignored for you.
+- Clicks made while the last disenchant is still finishing are skipped instead of failing.
+- With Auctionator: auction value shown next to Bind on Equip items, so you don't disenchant something worth selling.

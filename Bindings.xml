@@ -1,0 +1,5 @@
+<Bindings>
+  <Binding name="CLICK PintsDisenchantNext:LeftButton" header="PINTSDISENCHANT" category="ADDONS">
+    -- handled by the secure button
+  </Binding>
+</Bindings>
