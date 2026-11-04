@@ -54,6 +54,15 @@ local function Money(c)
 end
 
 ---------------------------------------------------------------- scanning
+-- an item that has just been disenchanted stays in its bag slot for a moment (until its loot is taken), looking
+-- perfectly normal. Aiming the next click at it gets "That item is not a valid target", so it's skipped until it's gone.
+local doomed = {}           -- ["bag:slot"] = { id, t }
+local function IsDoomed(bag, slot, id)
+  local d = doomed[bag .. ":" .. slot]
+  if not d then return false end
+  if d.id ~= id or GetTime() - d.t > 6 then doomed[bag .. ":" .. slot] = nil; return false end
+  return true
+end
 local function Scan()
   wipe(items); wipe(ignoredList)
   local skill = EnchantSkill()
@@ -61,7 +70,7 @@ local function Scan()
   for bag = 0, (NUM_BAG_SLOTS or 4) do
     for slot = 1, (C_Container.GetContainerNumSlots(bag) or 0) do
       local info = C_Container.GetContainerItemInfo(bag, slot)
-      if info and info.itemID and info.hyperlink then
+      if info and info.itemID and info.hyperlink and not IsDoomed(bag, slot, info.itemID) then
         local _, _, quality, ilvl, _, _, _, _, equipLoc, icon, _, classID, _, bindType = GetItemInfo(info.hyperlink)
         if quality and (classID == 2 or classID == 4) and quality >= 2 and quality <= 4
           and not (PintsDisenchantNoDE and PintsDisenchantNoDE[info.itemID])
@@ -97,8 +106,17 @@ local function Scan()
   return skill
 end
 
-local function MacroFor(e)
-  return ("/cast %s\n/use %d %d"):format(DEName(), e.bag, e.slot)
+-- Arm a secure button to disenchant one bag slot. This casts the spell and targets the item in a single step -
+-- unlike a "/cast + /use" macro, if the cast can't start (too soon, on cooldown) nothing else happens, so the item
+-- is never equipped by mistake.
+local function Arm(b, e)
+  b:SetAttribute("macrotext1", nil)
+  b:SetAttribute("type1", "spell"); b:SetAttribute("spell1", DEName())
+  b:SetAttribute("target-bag", e.bag); b:SetAttribute("target-slot", e.slot)
+end
+local function Disarm(b)
+  b:SetAttribute("type1", nil); b:SetAttribute("spell1", nil); b:SetAttribute("macrotext1", nil)
+  b:SetAttribute("target-bag", nil); b:SetAttribute("target-slot", nil)
 end
 
 ---------------------------------------------------------------- UI refresh (out of combat only)
@@ -115,9 +133,9 @@ local function Refresh()
   -- next button (kept current even with the window closed, so its keybind always points at the right bag slot)
   local nxt = FirstDoable()
   if nxt and KnowsDE() then
-    nextBtn:SetAttribute("type1", "macro"); nextBtn:SetAttribute("macrotext1", MacroFor(nxt)); nextBtn.item = nxt
+    Arm(nextBtn, nxt); nextBtn.item = nxt
   else
-    nextBtn:SetAttribute("type1", nil); nextBtn:SetAttribute("macrotext1", nil); nextBtn.item = nil
+    Disarm(nextBtn); nextBtn.item = nil
   end
   if not win then return end
   local list = showIgnored and ignoredList or items
@@ -147,10 +165,10 @@ local function Refresh()
     local v = (not showIgnored) and e.boe and AHValue(e.link)
     r.value:SetText(v and Money(v) or "")
     if not showIgnored and e.canDo and KnowsDE() then
-      r:SetAttribute("type1", "macro"); r:SetAttribute("macrotext1", MacroFor(e))
+      Arm(r, e)
       r.icon:SetDesaturated(false)
     else
-      r:SetAttribute("type1", nil); r:SetAttribute("macrotext1", nil)
+      Disarm(r)
       r.icon:SetDesaturated(not showIgnored)
     end
     r:Show()
@@ -182,7 +200,7 @@ end
 local function SlotHolds(e)
   if type(e) ~= "table" or not (e.bag and e.slot) then return false end
   local info = C_Container.GetContainerItemInfo(e.bag, e.slot)
-  return info ~= nil and info.itemID == e.id and not info.isLocked
+  return info ~= nil and info.itemID == e.id and not info.isLocked and not IsDoomed(e.bag, e.slot, e.id)
 end
 
 -- same, but ignoring the lock (an item stays locked for a moment after a failed cast)
@@ -198,10 +216,14 @@ local function Busy()
   if UnitCastingInfo and UnitCastingInfo("player") then return "casting" end
   if UnitChannelInfo and UnitChannelInfo("player") then return "channeling" end
   if LootFrame and LootFrame:IsShown() then return "loot open" end
-  if SpellIsTargeting and SpellIsTargeting() then return "targeting" end
 end
+-- a cursor left waiting for a target (from a click that didn't finish) would swallow the next disenchant: clear it
+local function ClearTargeting()
+  if SpellIsTargeting and SpellIsTargeting() and SpellStopTargeting then SpellStopTargeting() end
+end
+local clickedAt = 0
 local function SkipClick(b, why)
-  b:SetAttribute("type1", nil); b:SetAttribute("macrotext1", nil); lastClicked = nil
+  Disarm(b); lastClicked = nil
   UIErrorsFrame:AddMessage("Pint's Disenchant: wait for the last one to finish", 1, 0.82, 0)
   C_Timer.After(0.3, function() if not InCombatLockdown() then Refresh() end end)
 end
@@ -222,6 +244,7 @@ nextBtn:SetScript("PreClick", function(self, button, down)
   if not InCombatLockdown() then
     local why = Busy()
     if why then SkipClick(self, why); return end
+    ClearTargeting(); clickedAt = GetTime()
     -- out of combat a click can still re-aim the button: check the slot first, rescan if it's changed
     if not SlotHolds(self.item) then Refresh() end
   end
@@ -306,9 +329,10 @@ local function CreateWindow()
     r:SetScript("PreClick", function(self, button, down)
       if down or button ~= "LeftButton" or showIgnored or not self.item then return end
       if not InCombatLockdown() and Busy() then SkipClick(self); return end
+      if not InCombatLockdown() then ClearTargeting(); clickedAt = GetTime() end
       if not InCombatLockdown() and not SlotHolds(self.item) then
         -- the list is out of date: skip this click and catch up
-        self:SetAttribute("type1", nil); self:SetAttribute("macrotext1", nil); lastClicked = nil
+        Disarm(self); lastClicked = nil
         C_Timer.After(0, Refresh)
         return
       end
@@ -379,7 +403,7 @@ SLASH_PINTSDISENCHANT2 = "/disenchant"
 SlashCmdList.PINTSDISENCHANT = function(msg)
   msg = (msg or ""):lower()
   if msg == "log" then
-    print("|cffb48cffPint's Disenchant|r: last refusals" .. ((db.log and #db.log > 0) and ":" or " - none."))
+    print("|cffb48cffPint's Disenchant|r: last errors after a click" .. ((db.log and #db.log > 0) and ":" or " - none."))
     for i = 1, math.min(10, db.log and #db.log or 0) do print("  " .. db.log[i]) end
     return
   end
@@ -443,8 +467,8 @@ ev:SetScript("OnEvent", function(self, event, a1, a2, ...)
   elseif event == "PLAYER_REGEN_DISABLED" then
     -- still allowed to change secure buttons here (lockdown starts after this event). Disarm everything, because
     -- loot picked up in combat could land in a slot a button points at; re-armed after combat.
-    nextBtn:SetAttribute("type1", nil); nextBtn:SetAttribute("macrotext1", nil); nextBtn.item = nil
-    for _, r in ipairs(rows) do r:SetAttribute("type1", nil); r:SetAttribute("macrotext1", nil) end
+    Disarm(nextBtn); nextBtn.item = nil
+    for _, r in ipairs(rows) do Disarm(r) end
     dirty = true
     if win and win:IsShown() then countText:SetText("|cffff4040In combat - paused|r") end
   elseif event == "PLAYER_REGEN_ENABLED" then
@@ -453,15 +477,19 @@ ev:SetScript("OnEvent", function(self, event, a1, a2, ...)
     Refresh()
   elseif event == "UI_ERROR_MESSAGE" then
     local msg = a2 or a1
+    -- any red error right after one of our clicks: note it (/pd log) and don't leave the cursor stuck targeting
+    if type(msg) == "string" and GetTime() - clickedAt < 3 then
+      db.log = db.log or {}
+      local it = lastClicked
+      local info = it and C_Container.GetContainerItemInfo(it.bag, it.slot)
+      table.insert(db.log, 1, ("%s  \"%s\"  item %s  in slot: %s  locked: %s  %s"):format(date("%m-%d %H:%M:%S"), msg, tostring(it and it.id),
+        tostring(info ~= nil and it ~= nil and info.itemID == it.id), tostring(info and info.isLocked), Busy() or "idle"))
+      while #db.log > 30 do table.remove(db.log) end
+      C_Timer.After(0, ClearTargeting)
+    end
     local cant = type(msg) == "string" and (msg == SPELL_FAILED_CANT_BE_DISENCHANTED
       or (msg:lower():find("disenchant", 1, true) and msg ~= SPELL_FAILED_CANT_BE_DISENCHANTED_SKILL and not msg:lower():find("skill", 1, true)))
     if lastClicked and cant then
-      -- keep a short log so a stubborn case can be looked at later (/pd log)
-      db.log = db.log or {}
-      local info = C_Container.GetContainerItemInfo(lastClicked.bag, lastClicked.slot)
-      table.insert(db.log, 1, ("%s  item %s  in slot: %s  locked: %s  %s"):format(date("%m-%d %H:%M:%S"), tostring(lastClicked.id),
-        tostring(info and info.itemID == lastClicked.id), tostring(info and info.isLocked), Busy() or "idle"))
-      while #db.log > 30 do table.remove(db.log) end
       -- only give up on an item after it's refused twice in a row (once can just be bad timing)
       if SlotHas(lastClicked) then
         db.fails = db.fails or {}
@@ -476,7 +504,12 @@ ev:SetScript("OnEvent", function(self, event, a1, a2, ...)
     end
   elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
     -- a disenchant went through: that item clearly can be disenchanted
-    if a1 == "player" and (...) == DE_SPELL and lastClicked and db.fails then db.fails[lastClicked.id] = nil end
+    if a1 == "player" and (...) == DE_SPELL and lastClicked then
+      if db.fails then db.fails[lastClicked.id] = nil end
+      doomed[lastClicked.bag .. ":" .. lastClicked.slot] = { id = lastClicked.id, t = GetTime() }
+      lastClicked = nil
+      Soon()                -- re-aim at the next item straight away
+    end
   else
     if not InCombatLockdown() then Soon() else dirty = true end
   end

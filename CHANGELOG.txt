@@ -1,5 +1,16 @@
 Pint's Disenchant - Changelog
 
+v1.2.2
+- Fixed "That item is not a valid target" when disenchanting quickly: an item that has just been disenchanted
+  stays in your bag for a moment, and the next click could aim at it. It's now skipped until it's gone.
+- A click that comes too soon can no longer equip the item instead of disenchanting it: the buttons now cast
+  Disenchant and target the item in one step, and do nothing if the cast can't start.
+
+v1.2.1
+- Fixed a red error appearing now and then while disenchanting quickly: a targeting cursor left over from a
+  click that didn't finish is now cleared before the next disenchant.
+- /pd log now lists any error the game shows right after a click, with what was happening at the time.
+
 v1.2
 - First public release.
 - A list of every item in your bags you can disenchant, with one "Disenchant next" button and a keybind.

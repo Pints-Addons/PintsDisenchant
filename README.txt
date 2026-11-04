@@ -1,4 +1,4 @@
-Pint's Disenchant v1.2 - a destroy list for enchanters
+Pint's Disenchant v1.2.2 - a destroy list for enchanters
 (WoW Classic Era / Hardcore / Forever)
 
 REQUIRES
@@ -27,7 +27,7 @@ HOW TO USE
 COMMANDS
   /pd         open or close the list
   /pd reset   move the window back to the middle of the screen
-  /pd log     show the last items the game refused (for bug reports)
+  /pd log     show the last errors the game gave after a click (for bug reports)
 
 FEEDBACK
   Report a bug or suggest an idea: https://github.com/Pints-Addons/PintsDisenchant/issues
