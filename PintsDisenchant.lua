@@ -3,6 +3,34 @@
 -- (the big "Disenchant next" button, its keybind, or a row in the list).
 
 local ADDON = ...
+-- Compatibility: WoW Forever runs on the modern game client, where these older functions moved or were renamed.
+local GetItemInfo = GetItemInfo or (C_Item and C_Item.GetItemInfo)
+local GetItemQualityColor = GetItemQualityColor or (C_Item and C_Item.GetItemQualityColor)
+local IsSpellKnown = IsSpellKnown or (C_SpellBook and C_SpellBook.IsSpellKnown)
+local GetSpellInfo = GetSpellInfo or function(s)
+	local i = C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(s)
+	if i then return i.name, nil, i.iconID, i.castTime, i.minRange, i.maxRange, i.spellID, i.originalIconID end
+end
+local GetNumSkillLines, GetSkillLineInfo = GetNumSkillLines, GetSkillLineInfo
+if not GetNumSkillLines and GetProfessions then
+	local lines = {}
+	GetNumSkillLines = function()
+		wipe(lines)
+		local p = { GetProfessions() }
+		for k = 1, 6 do
+			if p[k] then
+				local name, _, rank, maxRank = GetProfessionInfo(p[k])
+				if name then lines[#lines + 1] = { name, rank, maxRank } end
+			end
+		end
+		return #lines
+	end
+	GetSkillLineInfo = function(i)
+		local l = lines[i]
+		if l then return l[1], false, false, l[2], 0, 0, l[3] end
+	end
+end
+
 local DE_SPELL = 13262
 local ROW_H, ROWS_MAX, W, H = 26, 200, 440, 470
 

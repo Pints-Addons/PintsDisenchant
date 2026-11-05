@@ -1,5 +1,9 @@
 Pint's Disenchant - Changelog
 
+v1.2.3
+- Works on WoW Forever (the modern game client). Classic Era is unchanged.
+- Uses the modern item, spell and profession functions where the old ones are gone.
+
 v1.2.2
 - Fixed "That item is not a valid target" when disenchanting quickly: an item that has just been disenchanted
   stays in your bag for a moment, and the next click could aim at it. It's now skipped until it's gone.
