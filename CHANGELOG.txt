@@ -1,5 +1,9 @@
 Pint's Disenchant - Changelog
 
+v1.2.4
+- New Soulbound filter next to Bind on Equip. Untick it to keep soulbound items off the list; untick Bind on Equip
+  to keep BoE items off. Tick both to see everything (the old behaviour).
+
 v1.2.3
 - Works on WoW Forever (the modern game client). Classic Era is unchanged.
 - Uses the modern item, spell and profession functions where the old ones are gone.

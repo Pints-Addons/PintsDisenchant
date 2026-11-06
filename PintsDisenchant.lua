@@ -109,7 +109,7 @@ local function Scan()
           e.canDo = skill >= e.req
           if db.ignore[info.itemID] then
             if not seenIgnored[info.itemID] then seenIgnored[info.itemID] = true; ignoredList[#ignoredList + 1] = e end
-          elseif db.q[quality] and (db.boe or not e.boe) and not e.locked then
+          elseif db.q[quality] and (db.boe or not e.boe) and (db.sb or not e.bound) and not e.locked then
             items[#items + 1] = e
           end
         end
@@ -312,7 +312,7 @@ local function CreateWindow()
   end)
 
   -- filters
-  local defs = { { "q2", "Uncommon", 2 }, { "q3", "Rare", 3 }, { "q4", "Epic", 4 }, { "boe", "Bind on Equip" } }
+  local defs = { { "q2", "Uncommon", 2 }, { "q3", "Rare", 3 }, { "q4", "Epic", 4 }, { "boe", "Bind on Equip" }, { "sb", "Soulbound" } }
   local x = 14
   for _, d in ipairs(defs) do
     local c = CreateFrame("CheckButton", nil, win, "UICheckButtonTemplate"); c:SetSize(22, 22); c:SetPoint("TOPLEFT", x, -50)
@@ -322,17 +322,20 @@ local function CreateWindow()
       c:SetChecked(db.q[d[3]] and true or false)
       c:SetScript("OnClick", function(self) db.q[d[3]] = self:GetChecked() and true or nil; Refresh() end)
     else
-      c.text:SetText(d[2]); c:SetChecked(db.boe and true or false)
-      c:SetScript("OnClick", function(self) db.boe = self:GetChecked() and true or false; Refresh() end)
+      local key = d[1]
+      c.text:SetText(d[2]); c:SetChecked(db[key] and true or false)
+      c:SetScript("OnClick", function(self) db[key] = self:GetChecked() and true or false; Refresh() end)
       c:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine("Bind on Equip")
-        GameTooltip:AddLine("Include items that aren't soulbound yet. These can be sold - the list shows their auction value when Auctionator has one.", 1, 1, 1, true)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:AddLine(d[2])
+        GameTooltip:AddLine(key == "boe"
+          and "Include items that aren't soulbound yet. These can be sold - the list shows their auction value when Auctionator has one."
+          or "Include items that are already soulbound to you (quest rewards, looted Bind on Pickup gear, and anything you've equipped).", 1, 1, 1, true)
         GameTooltip:Show()
       end)
       c:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
     checks[#checks + 1] = c
-    x = x + 26 + c.text:GetStringWidth() + 14
+    x = x + 26 + c.text:GetStringWidth() + 8
   end
 
   -- list
@@ -457,6 +460,7 @@ ev:SetScript("OnEvent", function(self, event, a1, a2, ...)
     db = PintsDisenchantDB
     db.q = db.q or { [2] = true, [3] = true }
     if db.boe == nil then db.boe = true end
+    if db.sb == nil then db.sb = true end
     db.ignore = db.ignore or {}
     db.minimap = db.minimap or {}
   elseif event == "PLAYER_LOGIN" then
