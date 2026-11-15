@@ -438,6 +438,7 @@ SlashCmdList.PINTSDISENCHANT = function(msg)
     for i = 1, math.min(10, db.log and #db.log or 0) do print("  " .. db.log[i]) end
     return
   end
+  if msg == "tooltip" then db.deTooltip = db.deTooltip == false; print("|cffd4a017Pint's Disenchant:|r disenchant results in item tooltips " .. (db.deTooltip == false and "off." or "on.")); return end
   if msg == "reset" then db.pos = nil; if win and not InCombatLockdown() then win:ClearAllPoints(); win:SetPoint("CENTER", 300, 0) end; return end
   Toggle()
 end

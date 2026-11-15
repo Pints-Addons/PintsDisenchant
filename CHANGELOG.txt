@@ -1,5 +1,12 @@
 Pint's Disenchant - Changelog
 
+v1.2.5
+- Item tooltips show what an item disenchants into: each possible material, how many and the odds, the Enchanting skill
+  it needs (red if yours is too low), and roughly what that's worth at Pint's Auctions' prices. /pd tooltip turns it off.
+  On WoW Forever the odds are Forever's own, from Wowhead's WoW Forever database (they differ from Classic's in places -
+  green armour of item level 36-40 gives Greater Mystic Essence more often than Vision Dust, green weapons of 16-30 give
+  Greater Magic Essence, and so on); Classic Era uses Classic's tables.
+
 v1.2.4
 - New Soulbound filter next to Bind on Equip. Untick it to keep soulbound items off the list; untick Bind on Equip
   to keep BoE items off. Tick both to see everything (the old behaviour).
